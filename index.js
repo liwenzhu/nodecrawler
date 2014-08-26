@@ -73,7 +73,7 @@ var crawl = function (crawlURL) {
 	});
 
 	req.setTimeout(10000, function(){
-		console.log(new Date(), 'request timeout, skip.');
+		console.log(new Date(), 'request timeout, skip url:', crawlURL);
 		crawl(urls.pop());
 	});
 
