@@ -1,3 +1,5 @@
+'use strict';
+
 var Bloom = require('bloom-lite');
 var showmemory = require('showmemory');
 var jschardet = require('jschardet');
@@ -12,15 +14,16 @@ var bloom = new Bloom();
 var urls = [];
 var options = {};
 var count = 0;
-var INTERVAL = 100;
-var buffers = [], buf, encoding;
+// var INTERVAL = 100;
+var buffers = [], buf, encoding, body;
 
 var parser = new htmlparser.Parser({
 	onopentag: function (name, attribs) {
 		if(name === "a") {
-			if(!bloom.exist(attribs.href)) {
+			if(!bloom.exist(attribs.href) 
+				&& (url.parse(attribs.href).protocol != null)) {
 				count++;
-				if ( (count & 511) == 0) {
+				if ( (count & 2047) == 0) {
 					console.log("total pages: %s, url: %s", count, attribs.href);
 				}
 				urls.push(attribs.href);
@@ -44,16 +47,17 @@ var crawl = function (crawlURL) {
 		});
 
 		res.on('end', function () {
-			buf = buf = Buffer.concat(buffers);
+			buf = Buffer.concat(buffers);
 			// console.log(jschardet.detect(buf));
 			encoding = jschardet.detect(buf).encoding;
 			body = iconv.decode(buf, encoding);
 			parser.write(body);
 			parser.end();
 			console.log("url list length:", urls.length);
-			setTimeout(function(){
+			buf = null;
+			process.nextTick(function () {
 				crawl(urls.pop());
-			}, INTERVAL);
+			});
 		});
 	}).end();
 };
