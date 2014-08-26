@@ -7,23 +7,25 @@ var iconv = require('iconv-lite');
 var htmlparser = require('htmlparser2');
 var http = require('http');
 var url = require('url');
-showmemory(5000);
+// showmemory(10000);
 
 var PORTAL = "http://www.jd.com";
 var bloom = new Bloom();
 var urls = [];
-var options = {};
+var options = {
+	agent: false
+};
 var count = 0;
-// var INTERVAL = 100;
 var buffers, buf, encoding, body;
 
 var parser = new htmlparser.Parser({
 	onopentag: function (name, attribs) {
-		if(name === "a") {
+		if(name === "a" && attribs.href) {
 			if(!bloom.exist(attribs.href) 
-				&& (url.parse(attribs.href).protocol != null)) {
+				&& (url.parse(attribs.href).protocol != null) 
+				&& attribs.href.indexOf('jd.com') > 0) {
 				count++;
-				if ( (count & 4095) == 0) {
+				if ( (count & 127) == 0) {
 					console.log("total pages: %s, url: %s", count, attribs.href);
 				}
 				urls.push(attribs.href);
@@ -33,6 +35,7 @@ var parser = new htmlparser.Parser({
 });
 
 var crawl = function (crawlURL) {
+	console.log("----------> URL: ", crawlURL);
 	if (!crawlURL) return process.exit(0);
 	var parsedUrl = url.parse(crawlURL);
 	if ("https:" === parsedUrl.protocol || !parsedUrl.protocol)
@@ -41,6 +44,7 @@ var crawl = function (crawlURL) {
 	options.hostname = parsedUrl.hostname;
 	options.path = parsedUrl.path;
 	buffers = [];
+	bloom.add(crawlURL);
 
 	http.request(options, function (res) {
 		res.on('data', function (chunk) {
@@ -61,6 +65,10 @@ var crawl = function (crawlURL) {
 			process.nextTick(function () {
 				crawl(urls.pop());
 			});
+		});
+
+		res.on('error', function(err){
+			console.log(err);
 		});
 	}).end();
 };
