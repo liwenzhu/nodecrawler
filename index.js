@@ -72,6 +72,11 @@ var crawl = function (crawlURL) {
 		});
 	});
 
+	req.setTimeout(10000, function(){
+		console.log(new Date(), 'request timeout, skip.');
+		crawl(urls.pop());
+	});
+
 	req.on('error', function (e) {
 		console.log(new Date() , ' connection problem:', e);
 
