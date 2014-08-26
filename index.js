@@ -16,7 +16,7 @@ var options = {
 	agent: false
 };
 var count = 0;
-var buffers, buf, encoding, body;
+var buffers, buf, encoding, body, req;
 
 var parser = new htmlparser.Parser({
 	onopentag: function (name, attribs) {
@@ -35,7 +35,7 @@ var parser = new htmlparser.Parser({
 });
 
 var crawl = function (crawlURL) {
-	console.log("----------> URL: ", crawlURL);
+	console.log("----------> URL: %s, %s", crawlURL, new Date());
 	if (!crawlURL) return process.exit(0);
 	var parsedUrl = url.parse(crawlURL);
 	if ("https:" === parsedUrl.protocol || !parsedUrl.protocol)
@@ -46,7 +46,7 @@ var crawl = function (crawlURL) {
 	buffers = [];
 	bloom.add(crawlURL);
 
-	http.request(options, function (res) {
+	req = http.request(options, function (res) {
 		res.on('data', function (chunk) {
 			buffers.push(chunk);
 		});
@@ -70,7 +70,15 @@ var crawl = function (crawlURL) {
 		res.on('error', function(err){
 			console.log(err);
 		});
-	}).end();
+	});
+
+	req.on('error', function (e) {
+		console.log(new Date() , ' connection problem:', e);
+
+		crawl(urls.pop());
+	});
+
+	req.end();
 };
 
 crawl(PORTAL);
