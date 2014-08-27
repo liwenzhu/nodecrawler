@@ -16,18 +16,17 @@ var options = {
 	agent: false
 };
 var count = 0;
+var LOG_INTERVAL = 10000; // 10 seconds
+
 var buffers, buf, encoding, body, req;
 
 var parser = new htmlparser.Parser({
 	onopentag: function (name, attribs) {
 		if(name === "a" && attribs.href) {
 			if(!bloom.exist(attribs.href) 
-				&& (url.parse(attribs.href).protocol != null) 
+				// && (url.parse(attribs.href).protocol != null) 
 				&& attribs.href.indexOf('jd.com') > 0) {
 				count++;
-				if ( (count & 127) == 0) {
-					console.log("total pages: %s, url: %s", count, attribs.href);
-				}
 				urls.push(attribs.href);
 			}
 		}
@@ -35,7 +34,8 @@ var parser = new htmlparser.Parser({
 });
 
 var crawl = function (crawlURL) {
-	console.log("----------> URL: %s, %s", crawlURL, new Date());
+	if ( (count & 127) == 0)
+		console.log("----------> URL: %s, %s", crawlURL, new Date());
 	if (!crawlURL) return process.exit(0);
 	var parsedUrl = url.parse(crawlURL);
 	if ("https:" === parsedUrl.protocol || !parsedUrl.protocol)
@@ -52,14 +52,13 @@ var crawl = function (crawlURL) {
 		});
 
 		res.on('end', function () {
-			if (buffers.length == 0) 
-				return crawl(urls.pop());
 			buf = Buffer.concat(buffers);
 			encoding = jschardet.detect(buf).encoding;
+			if(!encoding)
+				return crawl(urls.pop());
 			body = iconv.decode(buf, encoding);
 			parser.write(body);
 			parser.end();
-			console.log("url list length:", urls.length);
 			buf = null;
 			buffers = null;
 			process.nextTick(function () {
@@ -72,19 +71,30 @@ var crawl = function (crawlURL) {
 		});
 	});
 
-	req.setTimeout(10000, function(){
+	req.setTimeout(30000, function(){
 		console.log(new Date(), 'request timeout, skip url:', crawlURL);
 		crawl(urls.pop());
 	});
 
 	req.on('error', function (e) {
-		console.log(new Date() , ' connection problem:', e);
-
-		crawl(urls.pop());
+		console.log(new Date() , ' connection problem retry 30 seconds later:', e, crawlURL);
+		setTimeout(function () {
+			crawl(urls.pop());
+		}, 30000);
 	});
 
 	req.end();
 };
+
+function printUrlsLength() {
+	console.log("crawled pages:", count, new Date());
+	console.log("urls to crawl:", urls.length);
+	setTimeout(function () {
+		printUrlsLength();
+	}, LOG_INTERVAL);
+};
+
+printUrlsLength();
 
 crawl(PORTAL);
 
