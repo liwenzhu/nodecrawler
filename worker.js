@@ -47,7 +47,14 @@ var crawl = function (crawlURL, id) {
 
 	req = http.request(options, function (res) {
 		res.on('data', function (chunk) {
-			buffers.push(chunk);
+			try {
+				buffers.push(chunk);
+			} catch (e) {
+				console.log('url:', crawlURL);
+				console.log(e);
+				console.log('buffers', buffers);
+				console.log(chunk);
+			}
 		});
 
 		res.on('end', function () {
