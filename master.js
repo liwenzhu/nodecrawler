@@ -21,24 +21,33 @@ for (var i = 0; i < numCPUs; i++) {
 function createWorker () {
 	var worker = cluster.fork();
 	worker.on('message', function (msg) {
-		// if ((urls.length & 1023) === 0)
-		// 	console.log("----------> URL: %s, %s", urls[0], new Date());
 		if (msg.cmd && msg.cmd === "url") {
 			if (!bloom.exist(msg.url)) {
 				count++;
 				bloom.add(msg.url);
 				urls.push(msg.url);
 			}
+		} else if (msg.cmd && msg.cmd === "error") {
+			console.log("----------> Error URL: %s, %s, urls: %s, ID: %s", urls[0], new Date(), urls.length, worker.id);
+			setTimeout(function(){
+				worker.send({url: urls.shift()});
+			}, 1000);
 		} else {
-			if(urls.length === 0)
+			if (urls.length === 0) {
 				console.log('urls is empty');
-			worker.send({url: urls.shift()});
+				process.exit(0);
+			}
+			if ((urls.length & 127) === 0)
+			console.log("----------> URL: %s, %s, urls: %s, id: %s", urls[0], new Date(), urls.length, worker.id);
+			process.nextTick(function(){
+				worker.send({url: urls.shift()});
+			});
  		}	
 	});
 	if (urls.length === 0)
-		worker.send({url: PORTAL_URL, id: worker.id});
+		worker.send({url: PORTAL_URL, saveId: worker.id});
 	else 
-		worker.send({url: urls.shift()});
+		worker.send({url: urls.shift(), saveId: worker.id});
 };
 
 cluster.on('online', function (worker) {
@@ -52,13 +61,22 @@ cluster.on('exit', function (worker, code, signal) {
 });
 
 
-function printUrlsLength() {
-	console.log("crawled pages:", count, new Date());
-	console.log("urls to crawl:", urls.length);
-	console.log("next url:", urls[0]);
-	setTimeout(function () {
-		printUrlsLength();
-	}, LOG_INTERVAL);
-};
+// function printUrlsLength() {
+// 	console.log("crawled pages:", count, new Date());
+// 	console.log("urls to crawl:", urls.length);
+// 	console.log("next url:", urls[0]);
+// 	setTimeout(function () {
+// 		printUrlsLength();
+// 	}, LOG_INTERVAL);
+// };
 
-printUrlsLength();
+//printUrlsLength();
+function updateChildren () {
+	for(var child in cluster.workers)
+		cluster.workers[child].kill();
+	setTimeout(function(){
+		updateChildren();
+	}, 600000);
+}
+
+updateChildren();
