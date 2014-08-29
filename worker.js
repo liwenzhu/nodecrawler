@@ -8,12 +8,9 @@ var url = require('url');
 var fs = require('fs');
 
 var options = {
-	agent: false
 };
 
-var DOWNLOAD_SPEED = 10; // 200 kb/s
-
-var buf, encoding, body, req, id, fsWriteStream;
+var buffers, buf, encoding, body, req, id, fsWriteStream;
 
 process.on('message', handleMessage);
 
@@ -23,9 +20,7 @@ function handleMessage (msg) {
 		fsWriteStream = fs.createWriteStream(__dirname + "/pages/"+id+".txt", {flag: "a+"});
 		console.log("logfile:", __dirname + "/pages/"+id+".txt");
 	}
-	if (msg.url) {
-		crawl(msg.url, msg.id);
-	}
+	crawl(msg.url);
 };
 
 var parser = new htmlparser.Parser({
@@ -43,13 +38,7 @@ var parser = new htmlparser.Parser({
 			fsWriteStream.write(text, function (err) {
 				if(err)
 					console.log("######id:%s, error:", id, err);
-			})
-	},
-	onclosetag: function (tagName) {
-		if (tagName === "html") {
-			process.send({});
-		}
-
+			});
 	}
 });
 
@@ -72,21 +61,19 @@ var crawl = function (crawlURL) {
 	//extract url
 	options.hostname = parsedUrl.hostname;
 	options.path = parsedUrl.path;
-	// buffers = [];
 
 	req = http.request(options, function (res) {
-		res.on('readable', function () {
-			var chunk;
-			var buffers = [];
-			while (null !== (chunk = res.read(DOWNLOAD_SPEED))) {
-				// console.log(chunk.toString());
-				setTimeout(function() {
-					buffers.push(chunk);
-				}, 100)
-				// buffers.push(chunk);
-			}
+		buffers = [];
+		res.on('data', function (chunk) {
+			if(!buffers)
+				return process.send({});
+			buffers.push(chunk);
+			res.pause();
+			setTimeout(function(){res.resume();}, 1000);
+		});
 
-			// console.log(buffers);
+		res.on('end', function () {
+			res.destroy();
 			if(!buffers)
 				return process.send({});
 			try {
@@ -100,76 +87,31 @@ var crawl = function (crawlURL) {
 			if(!encoding)
 				return process.send({});
 			body = iconv.decode(buf, encoding);
-			// console.log(body);
-			// handleBody(body);
 			parser.write(body);
-			parser.end();
+			parser.end();	
 			buf = null;
 			buffers = null;
-			// process.send({});
+			process.send({});
 		});
-		// res.on('data', function (chunk) {
-		// 	// try {
-		// 	if(!buffers)
-		// 		return process.send({});
-		// 	buffers.push(chunk);
-		// 	// } catch (e) {
-		// 	// 	console.log('url:', crawlURL);
-		// 	// 	console.log(e);
-		// 	// 	console.log('buffers', buffers);
-		// 	// 	console.log(chunk);
-		// 	// }
-		// });
-
-		// res.on('end', function () {
-		// 	if(!buffers)
-		// 		return process.send({});
-		// 	try {
-		// 		buf = Buffer.concat(buffers);
-		// 	} catch (e) {
-		// 		console.log("buf:", buf);
-		// 		console.log("buffers:", buffers);
-		// 		return process.send({});
-		// 	}
-		// 	encoding = jschardet.detect(buf).encoding;
-		// 	if(!encoding)
-		// 		return process.send({});
-		// 	body = iconv.decode(buf, encoding);
-		// 	// console.log(body);
-		// 	// handleBody(body);
-		// 	parser.write(body);
-		// 	parser.end();
-		// 	buf = null;
-		// 	buffers = null;
-		// 	process.send({});
-		// });
 
 		res.on('error', function(err){
 			console.log(err);
+			res.destroy();
 		});
 	});
 
-	// req.setTimeout(30000, function(){
-	// 	console.log(new Date(), 'request timeout, skip url:', crawlURL);
-	// 	process.send({});
-	// });
-
 	req.on('error', function (e) {
-		console.log(new Date() , ' connection problem:', e, crawlURL);
-		process.send({cmd: 'error'});
+		console.log('ERROR: options: (%s), message: (%s), time: (%s), url: (%s)', options, e, new Date(), crawlURL);
+		if (e.code==='ECONNRESET')
+			process.send({cmd: 'error', errorURL: crawlURL});
+		else 
+			process.send({cmd: 'error'});
+		req.destroy();
 	});
 
 	req.end();
 };
 
-// var fs = require('fs');
-// fs.readFile('./out.txt', {encoding: 'utf8'}, function(err, data){
-// 	// console.log(data);
-// 	console.log(data.match(/<body((.|\r\n)*)\/body>/g))
-// 	// console.log(data.match(/<body>(.*)<\/body>/));
-// })
-// var str = '';
-// console.log(str.match(/\<body\>.*\<\/body\>/g))
 
 
 

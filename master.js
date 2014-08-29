@@ -14,9 +14,9 @@ cluster.setupMaster({
 	exec: "worker.js"
 });
 
-// for (var i = 0; i < numCPUs; i++) {
+for (var i = 0; i < numCPUs; i++) {
 	createWorker();
-// }
+}
 
 function createWorker () {
 	var worker = cluster.fork();
@@ -31,6 +31,8 @@ function createWorker () {
 			}
 		} else if (msg.cmd && msg.cmd === "error") {
 			console.log("----------> Error URL: %s, %s, urls: %s, ID: %s", urls[0], new Date(), urls.length, worker.id);
+			if (msg.errorURL)
+				urls.push(msg.errorURL); // push error url back
 			setTimeout(function(){
 				try {
 					worker.send({url: urls.shift()});
@@ -42,42 +44,48 @@ function createWorker () {
 			// console.log("url length:", urls.length);
 			if (urls.length === 0) {
 				console.log('there is no url in array.');
-				// process.exit(0);
+				process.exit(0);
 			}
 			if ((urls.length & 127) === 0)
-				console.log("----------> URL: %s, %s, urls: %s, id: %s", urls[0], new Date(), urls.length, worker.id);
+				console.log("DEBUG: URL: %s, %s, urls: %s, id: %s", urls[0], new Date(), urls.length, worker.id);
 			process.nextTick(function(){
 				worker.send({url: urls.shift()});
 			});
  		}	
 	});
-	if (urls.length === 0)
-		worker.send({url: PORTAL_URL, saveId: worker.id});
+	if (urls.length === 0) {
+		if(!bloom.exist(PORTAL_URL))
+			worker.send({url: PORTAL_URL, saveId: worker.id});
+		else 
+			worker.send({url:null, saveId: worker.id});
+	}
 	else 
 		worker.send({url: urls.shift(), saveId: worker.id});
 };
 
 cluster.on('online', function (worker) {
-	console.log('worker %s is ready.', worker.id);
+	console.log('INFO: worker %s is ready.', worker.id);
 });
 
 cluster.on('exit', function (worker, code, signal) {
-	console.log('worker %d died (%s). restarting...',
+	console.log('INFO: worker %d died (%s). restarting...',
 	worker.process.pid, signal || code);
 	createWorker();
 });
 
 
-// function printUrlsLength() {
+function printUrlsLength() {
 // 	console.log("crawled pages:", count, new Date());
 // 	console.log("urls to crawl:", urls.length);
-// 	console.log("next url:", urls[0]);
-// 	setTimeout(function () {
-// 		printUrlsLength();
-// 	}, LOG_INTERVAL);
-// };
+	console.log("INFO: urls: (%s), next url: (%s), workers: (%s).", 
+		urls.length, urls[0], Object.keys(cluster.workers).length);
+	setTimeout(function () {
+		printUrlsLength();
+	}, LOG_INTERVAL);
+};
 
-//printUrlsLength();
+printUrlsLength();
+
 function updateChildren () {
 	for(var child in cluster.workers)
 		cluster.workers[child].kill();
