@@ -14,14 +14,16 @@ cluster.setupMaster({
 	exec: "worker.js"
 });
 
-for (var i = 0; i < numCPUs; i++) {
+// for (var i = 0; i < numCPUs; i++) {
 	createWorker();
-}
+// }
 
 function createWorker () {
 	var worker = cluster.fork();
 	worker.on('message', function (msg) {
+		// console.log(msg);
 		if (msg.cmd && msg.cmd === "url") {
+			// console.log(msg.url);
 			if (!bloom.exist(msg.url)) {
 				count++;
 				bloom.add(msg.url);
@@ -37,12 +39,13 @@ function createWorker () {
 				}
 			}, 1000);
 		} else {
+			// console.log("url length:", urls.length);
 			if (urls.length === 0) {
-				console.log('urls is empty');
-				process.exit(0);
+				console.log('there is no url in array.');
+				// process.exit(0);
 			}
 			if ((urls.length & 127) === 0)
-			console.log("----------> URL: %s, %s, urls: %s, id: %s", urls[0], new Date(), urls.length, worker.id);
+				console.log("----------> URL: %s, %s, urls: %s, id: %s", urls[0], new Date(), urls.length, worker.id);
 			process.nextTick(function(){
 				worker.send({url: urls.shift()});
 			});
@@ -83,4 +86,7 @@ function updateChildren () {
 	}, 600000);
 }
 
-updateChildren();
+setTimeout(function(){
+	updateChildren();
+},600000);
+

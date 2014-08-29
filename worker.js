@@ -11,9 +11,9 @@ var options = {
 	agent: false
 };
 
-var DOWNLOAD_SPEED = 1024*200; // 200 kb/s
+var DOWNLOAD_SPEED = 10; // 200 kb/s
 
-var buffers, buf, encoding, body, req, id, fsWriteStream;
+var buf, encoding, body, req, id, fsWriteStream;
 
 process.on('message', handleMessage);
 
@@ -44,6 +44,12 @@ var parser = new htmlparser.Parser({
 				if(err)
 					console.log("######id:%s, error:", id, err);
 			})
+	},
+	onclosetag: function (tagName) {
+		if (tagName === "html") {
+			process.send({});
+		}
+
 	}
 });
 
@@ -66,34 +72,41 @@ var crawl = function (crawlURL) {
 	//extract url
 	options.hostname = parsedUrl.hostname;
 	options.path = parsedUrl.path;
-	buffers = [];
+	// buffers = [];
 
 	req = http.request(options, function (res) {
 		res.on('readable', function () {
 			var chunk;
-			while (null != (chunk = res.read(DOWNLOAD_SPEED))) {
-				if(!buffers)
-				return process.send({});
-				try {
-					buf = Buffer.concat(buffers);
-				} catch (e) {
-					console.log("buf:", buf);
-					console.log("buffers:", buffers);
-					return process.send({});
-				}
-				encoding = jschardet.detect(buf).encoding;
-				if(!encoding)
-					return process.send({});
-				body = iconv.decode(buf, encoding);
-				// console.log(body);
-				// handleBody(body);
-				parser.write(body);
-				parser.end();
-				buf = null;
-				buffers = null;
-				process.send({});
+			var buffers = [];
+			while (null !== (chunk = res.read(DOWNLOAD_SPEED))) {
+				// console.log(chunk.toString());
+				setTimeout(function() {
+					buffers.push(chunk);
+				}, 100)
+				// buffers.push(chunk);
 			}
-			
+
+			// console.log(buffers);
+			if(!buffers)
+				return process.send({});
+			try {
+				buf = Buffer.concat(buffers);
+			} catch (e) {
+				console.log("buf:", buf);
+				console.log("buffers:", buffers);
+				return process.send({});
+			}
+			encoding = jschardet.detect(buf).encoding;
+			if(!encoding)
+				return process.send({});
+			body = iconv.decode(buf, encoding);
+			// console.log(body);
+			// handleBody(body);
+			parser.write(body);
+			parser.end();
+			buf = null;
+			buffers = null;
+			// process.send({});
 		});
 		// res.on('data', function (chunk) {
 		// 	// try {
