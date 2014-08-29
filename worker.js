@@ -11,6 +11,8 @@ var options = {
 	agent: false
 };
 
+var DOWNLOAD_SPEED = 1024*200; // 200 kb/s
+
 var buffers, buf, encoding, body, req, id, fsWriteStream;
 
 process.on('message', handleMessage);
@@ -67,41 +69,67 @@ var crawl = function (crawlURL) {
 	buffers = [];
 
 	req = http.request(options, function (res) {
-		res.on('data', function (chunk) {
-			// try {
-			if(!buffers)
+		res.on('readable', function () {
+			var chunk;
+			while (null != (chunk = res.read(DOWNLOAD_SPEED))) {
+				if(!buffers)
 				return process.send({});
-			buffers.push(chunk);
-			// } catch (e) {
-			// 	console.log('url:', crawlURL);
-			// 	console.log(e);
-			// 	console.log('buffers', buffers);
-			// 	console.log(chunk);
-			// }
-		});
-
-		res.on('end', function () {
-			if(!buffers)
-				return process.send({});
-			try {
-				buf = Buffer.concat(buffers);
-			} catch (e) {
-				console.log("buf:", buf);
-				console.log("buffers:", buffers);
-				return process.send({});
+				try {
+					buf = Buffer.concat(buffers);
+				} catch (e) {
+					console.log("buf:", buf);
+					console.log("buffers:", buffers);
+					return process.send({});
+				}
+				encoding = jschardet.detect(buf).encoding;
+				if(!encoding)
+					return process.send({});
+				body = iconv.decode(buf, encoding);
+				// console.log(body);
+				// handleBody(body);
+				parser.write(body);
+				parser.end();
+				buf = null;
+				buffers = null;
+				process.send({});
 			}
-			encoding = jschardet.detect(buf).encoding;
-			if(!encoding)
-				return process.send({});
-			body = iconv.decode(buf, encoding);
-			// console.log(body);
-			// handleBody(body);
-			parser.write(body);
-			parser.end();
-			buf = null;
-			buffers = null;
-			process.send({});
+			
 		});
+		// res.on('data', function (chunk) {
+		// 	// try {
+		// 	if(!buffers)
+		// 		return process.send({});
+		// 	buffers.push(chunk);
+		// 	// } catch (e) {
+		// 	// 	console.log('url:', crawlURL);
+		// 	// 	console.log(e);
+		// 	// 	console.log('buffers', buffers);
+		// 	// 	console.log(chunk);
+		// 	// }
+		// });
+
+		// res.on('end', function () {
+		// 	if(!buffers)
+		// 		return process.send({});
+		// 	try {
+		// 		buf = Buffer.concat(buffers);
+		// 	} catch (e) {
+		// 		console.log("buf:", buf);
+		// 		console.log("buffers:", buffers);
+		// 		return process.send({});
+		// 	}
+		// 	encoding = jschardet.detect(buf).encoding;
+		// 	if(!encoding)
+		// 		return process.send({});
+		// 	body = iconv.decode(buf, encoding);
+		// 	// console.log(body);
+		// 	// handleBody(body);
+		// 	parser.write(body);
+		// 	parser.end();
+		// 	buf = null;
+		// 	buffers = null;
+		// 	process.send({});
+		// });
 
 		res.on('error', function(err){
 			console.log(err);
