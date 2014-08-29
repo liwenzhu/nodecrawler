@@ -30,7 +30,11 @@ function createWorker () {
 		} else if (msg.cmd && msg.cmd === "error") {
 			console.log("----------> Error URL: %s, %s, urls: %s, ID: %s", urls[0], new Date(), urls.length, worker.id);
 			setTimeout(function(){
-				worker.send({url: urls.shift()});
+				try {
+					worker.send({url: urls.shift()});
+				} catch (e) {
+					console.log(e); // channel closed do nothing.
+				}
 			}, 1000);
 		} else {
 			if (urls.length === 0) {
