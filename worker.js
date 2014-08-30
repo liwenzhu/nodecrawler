@@ -7,9 +7,10 @@ var http = require('http');
 var url = require('url');
 var fs = require('fs');
 
-var SPEED_LIMIT = 6; // 6: 64 kb/s, 7: 128 kb/s, 8: 256 kb/s, 9: 512 kb/s
-var PAUSE_TIME = (SPEED_LIMIT * 1024) / 1000.0;
+var SPEED_LIMIT = 50; // 50 kb/s  per/process
+var SPEED = (SPEED_LIMIT * 1024) / 1000.0;
 
+var errorCount = 0;
 var options = {
 };
 
@@ -30,7 +31,6 @@ var parser = new htmlparser.Parser({
 	onopentag: function (name, attribs) {
 		if(name === "a" && attribs.href) {
 			if(attribs.href.indexOf('jd.com') > 0) {
-				// console.log(attribs.href);
 				process.send({cmd: 'url', url: attribs.href});
 			}
 		}
@@ -54,13 +54,11 @@ function innerText (text) {
 var crawl = function (crawlURL) {
 	if (!crawlURL) {
 		console.log('#### crawlURL is null');
-		return setTimeout(function(){
-			process.send({});
-		}, 5000);
+		return sendMeMessageLater();
 	}
 	var parsedUrl = url.parse(crawlURL);
 	if ("https:" === parsedUrl.protocol || !parsedUrl.protocol)
-		return process.send({});
+		return sendMeMessageLater();
 	//extract url
 	options.hostname = parsedUrl.hostname;
 	options.path = parsedUrl.path;
@@ -75,31 +73,23 @@ var crawl = function (crawlURL) {
 			buffers.push(chunk);
 			tmpSentBytes += chunk.length;
 			elapsedTime = new Date() - startTime;
-	        assumedTime = tmpSentBytes >> SPEED_LIMIT;
+	        assumedTime = tmpSentBytes / SPEED;
 	        lag = assumedTime - elapsedTime;
-		    if (lag > 0) {
-		      // console.log('too fast, download will resume in: ' + lag + 'ms');
-		      res.pause();
-		      setTimeout(function () {
-		        res.resume();
-		      }, lag);
-		    }
+	        controlSpeed(lag, res);
 		});
 
 		res.on('end', function () {
-			res.destroy();
 			if(!buffers)
-				return process.send({});
+				return sendMeMessageLater();
 			try {
 				buf = Buffer.concat(buffers);
 			} catch (e) {
-				console.log("buf:", buf);
-				console.log("buffers:", buffers);
-				return process.send({});
+				console.log("ERROR Buffer concat: buf: %s, buffers: %s.", buf, buffers);
+				return sendMeMessageLater();
 			}
 			encoding = jschardet.detect(buf).encoding;
 			if(!encoding)
-				return process.send({});
+				return sendMeMessageLater();
 			body = iconv.decode(buf, encoding);
 			parser.write(body);
 			parser.end();	
@@ -107,25 +97,42 @@ var crawl = function (crawlURL) {
 			buffers = null;
 			process.send({});
 		});
-
-		res.on('error', function(err){
-			console.log(err);
-			res.destroy();
-		});
 	});
 
 	req.on('error', function (e) {
 		console.log('ERROR: options: (%s), message: (%s), time: (%s), url: (%s)', options, e, new Date(), crawlURL);
+		errorCount++;
+		if (errorCount === 10) 
+			return killMe();
 		if (e.code==='ECONNRESET')
 			process.send({cmd: 'error', errorURL: crawlURL});
 		else 
-			process.send({cmd: 'error'});
-		req.destroy();
+			sendMeMessageLater();
 	});
 
 	req.end();
 };
 
+function killMe () {
+	console.log("INFO: a stupid child process killed by itself!!!");
+	process.send({cmd:"kill"});
+}
+
+function controlSpeed (lag, res) {
+	if (lag > 0) {
+		// console.log('%s too fast, download will resume in: %s ms', crawlURL, lag);
+		res.pause();
+		setTimeout(function () {
+			res.resume();
+		}, lag);
+	}
+};
+
+function sendMeMessageLater () {
+	setTimeout(function () {
+		process.send({})
+	}, 5000);
+};
 
 
 
