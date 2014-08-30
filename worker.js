@@ -7,7 +7,7 @@ var http = require('http');
 var url = require('url');
 var fs = require('fs');
 
-var SPEED_LIMIT = 200; // 200 kb/s
+var SPEED_LIMIT = 6; // 6: 64 kb/s, 7: 128 kb/s, 8: 256 kb/s, 9: 512 kb/s
 var PAUSE_TIME = (SPEED_LIMIT * 1024) / 1000.0;
 
 var options = {
@@ -67,12 +67,23 @@ var crawl = function (crawlURL) {
 
 	req = http.request(options, function (res) {
 		buffers = [];
+		var startTime = new Date();
+		var tmpSentBytes = 0, elapsedTime, assumedTime, lag;
 		res.on('data', function (chunk) {
 			if(!buffers)
 				return process.send({});
 			buffers.push(chunk);
-			res.pause();
-			setTimeout(function(){res.resume();}, PAUSE_TIME);
+			tmpSentBytes += chunk.length;
+			elapsedTime = new Date() - startTime;
+	        assumedTime = tmpSentBytes >> SPEED_LIMIT;
+	        lag = assumedTime - elapsedTime;
+		    if (lag > 0) {
+		      // console.log('too fast, download will resume in: ' + lag + 'ms');
+		      res.pause();
+		      setTimeout(function () {
+		        res.resume();
+		      }, lag);
+		    }
 		});
 
 		res.on('end', function () {
