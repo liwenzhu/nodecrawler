@@ -7,6 +7,9 @@ var http = require('http');
 var url = require('url');
 var fs = require('fs');
 
+var SPEED_LIMIT = 200; // 200 kb/s
+var PAUSE_TIME = (SPEED_LIMIT * 1024) / 1000.0;
+
 var options = {
 };
 
@@ -69,7 +72,7 @@ var crawl = function (crawlURL) {
 				return process.send({});
 			buffers.push(chunk);
 			res.pause();
-			setTimeout(function(){res.resume();}, 1000);
+			setTimeout(function(){res.resume();}, PAUSE_TIME);
 		});
 
 		res.on('end', function () {

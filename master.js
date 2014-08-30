@@ -7,6 +7,7 @@ var bloom = new Bloom();
 
 var urls = [], count = 0;
 var LOG_INTERVAL = 10000; // 10 seconds
+var UPDATE_CHILD_INTERVAL = 2*60*1000; // 1 minutes
 
 var PORTAL_URL = "http://www.jd.com";
 
@@ -43,7 +44,7 @@ function createWorker () {
 		} else {
 			// console.log("url length:", urls.length);
 			if (urls.length === 0) {
-				console.log('there is no url in array.');
+				console.log('there is no url in array. pages: %s', count);
 				process.exit(0);
 			}
 			if ((urls.length & 127) === 0)
@@ -75,8 +76,6 @@ cluster.on('exit', function (worker, code, signal) {
 
 
 function printUrlsLength() {
-// 	console.log("crawled pages:", count, new Date());
-// 	console.log("urls to crawl:", urls.length);
 	console.log("INFO: urls: (%s), next url: (%s), workers: (%s).", 
 		urls.length, urls[0], Object.keys(cluster.workers).length);
 	setTimeout(function () {
@@ -91,10 +90,10 @@ function updateChildren () {
 		cluster.workers[child].kill();
 	setTimeout(function(){
 		updateChildren();
-	}, 600000);
+	}, UPDATE_CHILD_INTERVAL);
 }
 
 setTimeout(function(){
 	updateChildren();
-},600000);
+},UPDATE_CHILD_INTERVAL);
 
