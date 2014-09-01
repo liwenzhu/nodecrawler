@@ -91,15 +91,15 @@ function printUrlsLength() {
 
 printUrlsLength();
 
-// function updateChildren () {
-// 	for(var child in cluster.workers)
-// 		cluster.workers[child].kill();
-// 	setTimeout(function(){
-// 		updateChildren();
-// 	}, UPDATE_CHILD_INTERVAL);
-// }
+function updateChildren () {
+	for(var child in cluster.workers)
+		cluster.workers[child].kill();
+	setTimeout(function(){
+		updateChildren();
+	}, UPDATE_CHILD_INTERVAL);
+}
 
-// setTimeout(function(){
-// 	updateChildren();
-// },UPDATE_CHILD_INTERVAL);
+setTimeout(function(){
+	updateChildren();
+},UPDATE_CHILD_INTERVAL);
 
