@@ -8,16 +8,17 @@ var bloom = new Bloom();
 var urls = [], count = 0;
 var LOG_INTERVAL = 10000; // 10 seconds
 var UPDATE_CHILD_INTERVAL = 10*60*1000; // 10 minutes
-var PORTAL_URL = "http://shouji.jd.com";
+// var PORTAL_URL = "http://www.walmart.com/cp/cell-phones/1105910?povid=P1171-C1110.2784+1455.2776+1115.2956-L33";
+var PORTAL_URL = "http://www.amazon.com/cell-phones-service-plans-accessories/b/ref=topnav_storetab_cps?ie=UTF8&node=2335752011";
 // var PORTAL_URL = "http://www.amazon.com/Best-Sellers-Cell-Phones-Accessories/zgbs/wireless/7072561011/ref=acs_ux_rw_ts_cps_7072561011_more?pf_rd_p=1877024482&pf_rd_s=merchandised-search-10&pf_rd_t=101&pf_rd_i=7072561011&pf_rd_m=ATVPDKIKX0DER&pf_rd_r=1Z6BFFW16QM92KYDBZDJ";
 
 cluster.setupMaster({
 	exec: "worker.js"
 });
 
-// for (var i = 0; i < numCPUs; i++) {
+for (var i = 0; i < numCPUs; i++) {
 	createWorker();
-// }
+}
 
 function createWorker () {
 	var worker = cluster.fork();
@@ -38,7 +39,7 @@ function createWorker () {
 		} else {
 			if (urls.length === 0) {
 				console.log('there is no url in array. pages: %s', count);
-				process.exit(0);
+				// process.exit(0);
 			}
 			if ((urls.length & 127) === 0)
 				console.log("DEBUG: URL: %s, %s, urls: %s, id: %s", urls[0], new Date(), urls.length, worker.id);
