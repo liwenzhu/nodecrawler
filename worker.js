@@ -7,9 +7,9 @@ var url = require('url');
 var fs = require('fs');
 var cheerio = require('cheerio');
 
-var SPEED_LIMIT = 300; // 300 kb/s  per/process
+var SPEED_LIMIT = 50; // 300 kb/s  per/process
 var SPEED = (SPEED_LIMIT * 1024) / 1000.0;
-var DATA_SIZE_LIMIT = 100*1024; // 100 kb
+var DATA_SIZE_LIMIT = 1;//100*1024; // 100 kb
 var URL_FILTER = 'item.jd.com'
 
 var errorCount = 0;
@@ -34,7 +34,8 @@ function removeOldFileIfEmpty (filePath) {
 	fs.stat(filePath, function (error, stats) {
 		if (error) 
 			return console.log('ERROR: error when remove data file(%s)', error);
-		if (stats.size < DATA_SIZE_LIMIT) {
+		// if (stats.size < DATA_SIZE_LIMIT) {
+		if (stats.size === 0) {
 			console.log('INFO: data file size less than 100 KB, removed (%s).', filePath);
 			fs.unlinkSync(filePath);
 		} else {
@@ -122,13 +123,27 @@ function handleBody(body) {
 	});
 	text = $('div').text();
 	if (text) {
-		text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
+		text = handleText(text);
+		// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
 		fsWriteStream.write(text, function (err) {
 			if(err)
 				console.log("ERROR: id: (%s), error: (%s).", id, err);
 		});
 	}
 }
+
+function handleText (text) {
+	text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
+	text = text.split('商品名称');
+	var item, idx;
+	var result = [];
+	for (var i = 0; i < text.length; i++) {
+		item = text[i];
+		if((idx = item.indexOf('商品编号')) > 0)
+			result.push(item.slice(1, idx));
+	}
+	return result.join('\r\n');
+};
 
 function parseBody (buf) {
 	var encoding = jschardet.detect(buf).encoding;
