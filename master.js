@@ -16,9 +16,9 @@ cluster.setupMaster({
 	exec: "worker.js"
 });
 
-for (var i = 0; i < numCPUs; i++) {
+// for (var i = 0; i < numCPUs; i++) {
 	createWorker();
-}
+// }
 
 function createWorker () {
 	var worker = cluster.fork();

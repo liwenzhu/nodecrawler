@@ -7,7 +7,7 @@ var url = require('url');
 var fs = require('fs');
 var cheerio = require('cheerio');
 
-var SPEED_LIMIT = 50; // 300 kb/s  per/process
+var SPEED_LIMIT = 500; // 300 kb/s  per/process
 var SPEED = (SPEED_LIMIT * 1024) / 1000.0;
 var DATA_SIZE_LIMIT = 1;//100*1024; // 100 kb
 // var URL_FILTER = 'item.jd.com'
@@ -135,6 +135,9 @@ function handleBody(body) {
 	if (text) {
 		text = handleText(text);
 		// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
+		if (text.length == 1)
+			return;
+		console.log(text.length);
 		fsWriteStream.write(text, function (err) {
 			if(err)
 				console.log("ERROR: id: (%s), error: (%s).", id, err);
@@ -151,12 +154,12 @@ function handleText (text) {
 		item = data[i];
 		if(item == 'by' && oldItem.length > 12 && oldItem.length < 200) {
 			oldItem = oldItem.slice(0, oldItem.length >>> 1);
-			console.log("oldItem:", oldItem);
+			// console.log("oldItem:", oldItem);
 			result.push(oldItem);
 		}
 		oldItem = item;
 	}
-	return result.join('\r\n');
+	return result.join('\n') + '\n';
 	// for jd.com
 	// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
 	// text = text.split('商品名称');
