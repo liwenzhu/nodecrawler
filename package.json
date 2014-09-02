@@ -1,6 +1,6 @@
 {
   "name": "nodecrawler",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "crawl web pages.",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "bloom-lite": "*",
     "iconv-lite": "*",
     "jschardet": "*",
-    "htmlparser2": "*"
+    "cheerio": "*"
   },
   "devDependencies": {
     "showmemory": "*"
