@@ -131,14 +131,17 @@ function handleBody(body) {
 		if (!href.match('.jpg') && href.match(URL_FILTER) && href.match(TMP_FILTER))
 			process.send({cmd: 'url', url: href});
 	});
-	text = $('div').text();
+	text = $('#productTitle').text();
+	// text = body;
 	if (text) {
-		text = handleText(text);
+		// text = handleText(text);
+		console.log(text);
 		// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
-		if (text.length == 1)
-			return;
-		console.log(text.length);
-		fsWriteStream.write(text, function (err) {
+
+		// if (text.length == 1)
+		// 	return;
+		// console.log(text.length);
+		fsWriteStream.write(text+'\n', function (err) {
 			if(err)
 				console.log("ERROR: id: (%s), error: (%s).", id, err);
 		});
