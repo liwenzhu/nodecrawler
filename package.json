@@ -10,7 +10,8 @@
     "bloom-lite": "*",
     "iconv-lite": "*",
     "jschardet": "*",
-    "cheerio": "*"
+    "cheerio": "*",
+    "bosonnlp": "*"
   },
   "devDependencies": {
     "showmemory": "*"

@@ -7,12 +7,12 @@ var url = require('url');
 var fs = require('fs');
 var cheerio = require('cheerio');
 
-var SPEED_LIMIT = 500; // 300 kb/s  per/process
+var SPEED_LIMIT = 50; // 300 kb/s  per/process
 var SPEED = (SPEED_LIMIT * 1024) / 1000.0;
 var DATA_SIZE_LIMIT = 1;//100*1024; // 100 kb
-// var URL_FILTER = 'item.jd.com'
-var URL_FILTER = 'http';
-var TMP_FILTER = 'amazon.com';
+var URL_FILTER = 'item.jd.com'
+// var URL_FILTER = 'http';
+// var TMP_FILTER = 'amazon.com';
 
 var errorCount = 0;
 var options = {
@@ -128,14 +128,15 @@ function handleBody(body) {
 		if (!href)
 			return;
 		href = href.trim();
-		if (!href.match('.jpg') && href.match(URL_FILTER) && href.match(TMP_FILTER))
+		// if (!href.match('.jpg') && href.match(URL_FILTER) && href.match(TMP_FILTER))
+		if (!href.match('.jpg') && href.match(URL_FILTER))
 			process.send({cmd: 'url', url: href});
 	});
-	text = $('#productTitle').text();
+	text = $('div').text();
 	// text = body;
 	if (text) {
-		// text = handleText(text);
-		console.log(text);
+		text = handleText(text);
+		// console.log(text);
 		// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
 
 		// if (text.length == 1)
@@ -150,19 +151,21 @@ function handleBody(body) {
 
 function handleText (text) {
 	text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
-	var data = text.split('\r\n');
-	var item, oldItem;
-	var result = [];
-	for (var i = 0; i < data.length; i++) {
-		item = data[i];
-		if(item == 'by' && oldItem.length > 12 && oldItem.length < 200) {
-			oldItem = oldItem.slice(0, oldItem.length >>> 1);
-			// console.log("oldItem:", oldItem);
-			result.push(oldItem);
-		}
-		oldItem = item;
-	}
-	return result.join('\n') + '\n';
+	return text;
+	// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
+	// var data = text.split('\r\n');
+	// var item, oldItem;
+	// var result = [];
+	// for (var i = 0; i < data.length; i++) {
+	// 	item = data[i];
+	// 	if(item == 'by' && oldItem.length > 12 && oldItem.length < 200) {
+	// 		oldItem = oldItem.slice(0, oldItem.length >>> 1);
+	// 		// console.log("oldItem:", oldItem);
+	// 		result.push(oldItem);
+	// 	}
+	// 	oldItem = item;
+	// }
+	// return result.join('\n') + '\n';
 	// for jd.com
 	// text = text.replace(/(\t|\s\s)/g,'\r\n').replace(/\r\n\r\n/g,'');
 	// text = text.split('商品名称');
@@ -200,7 +203,7 @@ function pauseIfTooFast (lag, res) {
 
 function sendMeMessageLater () {
 	setTimeout(function () {
-		process.send({})
+		process.send({});
 	}, 5000);
 };
 
